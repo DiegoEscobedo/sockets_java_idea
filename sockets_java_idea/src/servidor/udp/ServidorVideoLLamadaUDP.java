@@ -2,23 +2,19 @@ package servidor.udp;
 
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
-import org.opencv.core.Size;
-import org.opencv.imgproc.Imgproc;
-import org.opencv.imgcodecs.Imgcodecs;
-import org.opencv.videoio.VideoCapture;
 import org.opencv.core.MatOfByte;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.highgui.HighGui;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.nio.ByteBuffer;
+import java.net.SocketException;
 
 public class ServidorVideoLLamadaUDP extends Thread {
-    static {
-        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-    }
+    static { System.loadLibrary(Core.NATIVE_LIBRARY_NAME); }
 
     private final int port;
+    private static final int MAX_PACKET_SIZE = 60000;  // 60 KB, para asegurar que los paquetes no sean demasiado grandes
 
     public ServidorVideoLLamadaUDP(int port) {
         this.port = port;
@@ -28,44 +24,28 @@ public class ServidorVideoLLamadaUDP extends Thread {
     public void run() {
         try {
             DatagramSocket socket = new DatagramSocket(port);
-            VideoCapture camera = new VideoCapture(0);
-            if (!camera.isOpened()) {
-                System.out.println("Error: No se puede abrir la cámara.");
-                return;
-            }
 
-            Mat frame = new Mat();
-            MatOfByte buffer = new MatOfByte();
-            InetAddress clientAddress = InetAddress.getByName("localhost");
-            int clientPort = port;
+            byte[] buffer = new byte[MAX_PACKET_SIZE];
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
             while (true) {
-                camera.read(frame);
-                Imgproc.resize(frame, frame, new Size(640, 480));
-                Imgcodecs.imencode(".jpg", frame, buffer);
-                byte[] data = buffer.toArray();
+                socket.receive(packet);
+                byte[] data = packet.getData();
+                int length = packet.getLength();
 
-                ByteBuffer byteBuffer = ByteBuffer.allocate(4);
-                byteBuffer.putInt(data.length);
-                byte[] sizeBytes = byteBuffer.array();
+                MatOfByte mob = new MatOfByte();
+                mob.fromArray(data);
+                Mat frame = Imgcodecs.imdecode(mob, Imgcodecs.IMREAD_COLOR);
 
-                // Enviar el tamaño del frame primero
-                DatagramPacket sizePacket = new DatagramPacket(sizeBytes, sizeBytes.length, clientAddress, clientPort);
-                socket.send(sizePacket);
-
-                // Enviar el frame en fragmentos
-                int offset = 0;
-                int packetSize = 60000; // Tamaño de cada fragmento
-                while (offset < data.length) {
-                    int length = Math.min(packetSize, data.length - offset);
-                    DatagramPacket packet = new DatagramPacket(data, offset, length, clientAddress, clientPort);
-                    socket.send(packet);
-                    offset += length;
+                if (!frame.empty()) {
+                    HighGui.imshow("Servidor Video", frame);
+                    HighGui.waitKey(1);
                 }
             }
+        } catch (SocketException e) {
+            System.err.println("Socket error: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("Error iniciando el servidor de videollamada: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Error en la videollamada del servidor: " + e.getMessage());
         }
     }
 }

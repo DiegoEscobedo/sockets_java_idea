@@ -12,9 +12,9 @@ import cliente.objetos.Contacto;
 public class Menu {
     public static void main(String[] args) throws Exception {
         ArrayList<Contacto> contactos = new ArrayList<>();
-        contactos.add(new Contacto( "192.168.18.1", "Diego"));
+        contactos.add(new Contacto("192.168.18.1", "Diego"));
         contactos.add(new Contacto(null, "Jose"));
-        // Agrega más contactos 
+        // Agrega más contactos
         String opcion;
 
         while (true) {
