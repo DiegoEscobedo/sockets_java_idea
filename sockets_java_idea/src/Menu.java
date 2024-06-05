@@ -12,8 +12,8 @@ import cliente.objetos.Contacto;
 public class Menu {
     public static void main(String[] args) throws Exception {
         ArrayList<Contacto> contactos = new ArrayList<>();
-        contactos.add(new Contacto("192.168.18.1", "Diego"));
-        contactos.add(new Contacto(null, "Jose"));
+        contactos.add(new Contacto("10.0.0.6", "Diego"));
+        contactos.add(new Contacto("10.0.0.60", "Jose"));
         // Agrega más contactos
         String opcion;
 
