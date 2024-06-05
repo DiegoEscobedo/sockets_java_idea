@@ -17,15 +17,17 @@ public class Menu {
         // Agrega más contactos 
         String opcion;
 
+        while (true) {
             mostrarMenuPrincipal();
             opcion = EntradaSalida.consolaCadenas();
-            
+
             if (opcion.equals("1")) {
                 mostrarMenuContactos(contactos);
-            }else if (opcion.equals("2")) {
+            } else if (opcion.equals("2")) {
                 EntradaSalida.mostrarMensaje("Adios, gracias por usar este chat chafa\n");
                 System.exit(0);
             }
+        }
     }
 
     private static void mostrarMenuPrincipal() {
@@ -42,7 +44,7 @@ public class Menu {
         }
         EntradaSalida.mostrarMensaje("Cualquier otro numero para regresar\n");
         opcion = EntradaSalida.consolaCadenas();
-        
+
         int opcionSeleccionada = Integer.parseInt(opcion);
         if (opcionSeleccionada >= 1 && opcionSeleccionada <= contactos.size()) {
             String ipContacto = contactos.get(opcionSeleccionada - 1).getIp();
@@ -52,7 +54,6 @@ public class Menu {
             System.exit(0);
         }
     }
-    
 
     private static void mostrarMenuAccionesContacto(String ipContacto) throws Exception {
         String opcion;
@@ -62,7 +63,7 @@ public class Menu {
         EntradaSalida.mostrarMensaje("3 para videollamada\n");
         EntradaSalida.mostrarMensaje("exit para regresar\n");
         opcion = EntradaSalida.consolaCadenas();
-    
+
         switch (opcion) {
             case "1":
                 // Crear el servidor UDP
@@ -70,15 +71,17 @@ public class Menu {
                 ClienteUDP clienteUDP = new ClienteUDP(ipContacto, 50000); // Puerto UDP para mensajes
                 clienteUDP.inicia();
                 servidorUDP.inicia();
+                break;
             case "2":
                 // Crear el servidor TCP
                 ServidorTCP servidorTCP = new ServidorTCP(60000);
                 servidorTCP.inicia();
                 ClienteTCP clienteTCP = new ClienteTCP(ipContacto, 60000); // Puerto TCP para archivos
-                clienteTCP.iniciaArch(); 
+                clienteTCP.iniciaArch();
+                break;
             case "3":
                 iniciarVideollamada(ipContacto);
-                break; 
+                break;
             case "exit":
                 // No hace nada, simplemente permite salir del switch
                 break;
@@ -88,11 +91,12 @@ public class Menu {
         }
     }
 
-    private static void iniciarVideollamada(String ipContacto) throws Exception {
+    private static void iniciarVideollamada(String ipContacto) {
         // Iniciar el servidor de videollamada
         Thread servidorVideoThread = new Thread(() -> {
             try {
-                new ServidorVideoLLamadaUDP().main(null);
+                ServidorVideoLLamadaUDP servidorVideo = new ServidorVideoLLamadaUDP(7000);
+                servidorVideo.start();
             } catch (Exception e) {
                 EntradaSalida.mostrarMensaje("Error iniciando el servidor de videollamada: " + e.getMessage() + "\n");
             }
@@ -102,7 +106,8 @@ public class Menu {
         // Iniciar el cliente de videollamada
         Thread clienteVideoThread = new Thread(() -> {
             try {
-                new ClienteVideoLLamadaUDP().main(null);
+                ClienteVideoLLamadaUDP clienteVideo = new ClienteVideoLLamadaUDP(ipContacto, 7000);
+                clienteVideo.start();
             } catch (Exception e) {
                 EntradaSalida.mostrarMensaje("Error iniciando el cliente de videollamada: " + e.getMessage() + "\n");
             }

@@ -1,39 +1,61 @@
-import org.opencv.core.CvType;
+package cliente.udp;
+
+import org.opencv.core.Core;
 import org.opencv.core.Mat;
-import org.opencv.core.Size;
-import org.opencv.highgui.HighGui;
-import org.opencv.imgproc.Imgproc;
+import org.opencv.core.MatOfByte;
 import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.highgui.HighGui;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 
-public class ClienteVideoLLamadaUDP {
-    private static final String SERVER = "localhost"; // Cambiar por la IP del servidor
-    private static final int PUERTO = 50001;
-
+public class ClienteVideoLLamadaUDP extends Thread {
     static {
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
     }
 
-    public static void main(String[] args) throws Exception {
-        DatagramSocket socket = new DatagramSocket(PUERTO);
-        byte[] buffer = new byte[65536];
+    private final String serverAddress;
+    private final int port;
 
-        while (true) {
-            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-            socket.receive(packet);
+    public ClienteVideoLLamadaUDP(String serverAddress, int port) {
+        this.serverAddress = serverAddress;
+        this.port = port;
+    }
 
-            byte[] data = packet.getData();
-            Mat frame = Imgcodecs.imdecode(new MatOfByte(data), Imgcodecs.IMREAD_UNCHANGED);
+    @Override
+    public void run() {
+        try {
+            DatagramSocket socket = new DatagramSocket(port, InetAddress.getByName(serverAddress));
+            byte[] sizeBuffer = new byte[4];
+            DatagramPacket sizePacket = new DatagramPacket(sizeBuffer, sizeBuffer.length);
 
-            if (!frame.empty()) {
-                Imgproc.resize(frame, frame, new Size(640, 480)); // Cambiar el tamaño del frame si es necesario
-                HighGui.imshow("Cliente de videollamada", frame);
+            while (true) {
+                // Recibir el tamaño del frame primero
+                socket.receive(sizePacket);
+                int frameSize = ByteBuffer.wrap(sizePacket.getData()).getInt();
+
+                // Recibir el frame en fragmentos
+                byte[] frameBuffer = new byte[frameSize];
+                int offset = 0;
+                int packetSize = 60000; // Tamaño de cada fragmento
+                while (offset < frameSize) {
+                    byte[] buffer = new byte[packetSize];
+                    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                    socket.receive(packet);
+                    int length = Math.min(packetSize, frameSize - offset);
+                    System.arraycopy(packet.getData(), 0, frameBuffer, offset, length);
+                    offset += length;
+                }
+
+                MatOfByte mob = new MatOfByte(frameBuffer);
+                Mat frame = Imgcodecs.imdecode(mob, Imgcodecs.IMREAD_COLOR);
+                HighGui.imshow("Video", frame);
                 HighGui.waitKey(1);
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }
